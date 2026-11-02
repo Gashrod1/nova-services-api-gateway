@@ -139,8 +139,47 @@ Contrôles complémentaires exécutés localement : **Bandit** (aucun résultat)
   partagés de GitLab.com. Sur un runner qui ne l'autorise pas, il faudrait passer
   à Kaniko ou Buildah.
 
-Noms d'images attendus :
+Noms d'images attendus sur GitLab :
 `registry.gitlab.com/<groupe>/<projet>/{users,orders,gateway}:<commit-sha>`.
+
+### 7.1 Exécution réelle : GitHub Actions + GitHub Container Registry
+
+Faute de compte GitLab, la pipeline a été transposée à l'identique sur GitHub
+(le `.gitlab-ci.yml` reste fourni comme livrable) :
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+| GitLab CI/CD | GitHub Actions |
+|---|---|
+| stage `test` | job `test` (conteneur `python:3.12-slim`, même commande pytest, même jeton fictif) |
+| stage `build`, Docker-in-Docker | job `build` (`needs: test`), matrice `users/orders/gateway`, `docker/build-push-action` |
+| GitLab Container Registry | GitHub Container Registry (`ghcr.io`) |
+| `$CI_REGISTRY_USER` / `$CI_REGISTRY_PASSWORD` | `github.actor` / `secrets.GITHUB_TOKEN` (jeton éphémère généré par GitHub pour chaque run) |
+| `$CI_COMMIT_SHA` | `github.sha` |
+
+Droits du jeton réduits au minimum : `contents: read` pour tout le workflow,
+`packages: write` **uniquement** pour le job `build`, qui ne s'exécute que sur un
+push vers `main` (pas sur les pull requests). Les images portent le label
+`org.opencontainers.image.source`, qui les rattache au dépôt.
+
+Résultat : run **41420607047** réussi (test 11 s, trois builds en parallèle),
+capture [`captures/pipeline-github-actions.png`](captures/pipeline-github-actions.png).
+Images publiées, publiques, taguées avec le SHA `b63c591…` :
+
+```
+ghcr.io/gashrod1/eshop-users:b63c5910565c4a276164600d40641e7f21cb299a
+ghcr.io/gashrod1/eshop-orders:b63c5910565c4a276164600d40641e7f21cb299a
+ghcr.io/gashrod1/eshop-gateway:b63c5910565c4a276164600d40641e7f21cb299a
+```
+
+Capture : [`captures/registry-ghcr.png`](captures/registry-ghcr.png).
+
+**Problème rencontré.** Les deux premiers runs échouaient à la publication
+(`error from registry: denied`) alors que la connexion réussissait et que le
+jeton avait bien `Packages: write`. Le build utilisait `docker build` / `docker push`
+du runner (constructeur classique, sans BuildKit). En passant à
+`docker/login-action` + `docker/setup-buildx-action` + `docker/build-push-action`,
+la publication fonctionne. Le premier essai a laissé un package vide `users`
+(sans image) à supprimer.
 
 ## 8. Partie 6 — Checklist de sécurité
 
@@ -153,8 +192,8 @@ Noms d'images attendus :
 | 5 | Conteneurs non-root | ✅ | `USER app` dans les 3 Dockerfiles |
 | 6 | Timeout vers les microservices | ✅ | `timeout=5.0`, test `test_fetch_json_uses_timeout` |
 | 7 | Erreurs backend sans détail technique | ✅ | 502 générique, test + preuve curl |
-| 8 | Variables prédéfinies du Registry GitLab | ✅ | `$CI_REGISTRY_*` dans `.gitlab-ci.yml` |
-| 9 | Images taguées avec le SHA du commit | ✅ | `:$CI_COMMIT_SHA` |
+| 8 | Variables prédéfinies du Registry | ✅ | `$CI_REGISTRY_*` (GitLab) ; `GITHUB_TOKEN` éphémère (GitHub, §7.1) |
+| 9 | Images taguées avec le SHA du commit | ✅ | `:$CI_COMMIT_SHA` / `:${{ github.sha }}`, images publiées §7.1 |
 | 10 | Images et dépendances analysées avant la production | ⚠️ partiel | pip-audit et Bandit lancés en local ; **pas encore dans la pipeline** (scan d'image type Trivy à ajouter) |
 
 **Score : 9/10.** Le point 10 relève des améliorations optionnelles de l'énoncé :
@@ -230,14 +269,13 @@ nouvelle réponse à partir de deux services.
 | `.gitlab-ci.yml` | racine | ✅ (YAML valide) |
 | Tests pytest | `tests/` | ✅ 8/8, `preuves/pytest.txt` |
 | Réponses des 3 endpoints | `preuves/endpoints-docker.txt`, `preuves/compose-ps.txt` (et `endpoints-local.txt` hors Docker) | ✅ |
-| Capture de la pipeline GitLab réussie | — | ⏳ **utilisateur** (pousser sur GitLab) |
-| Capture du Container Registry (3 images) | — | ⏳ **utilisateur** |
+| Capture de la pipeline réussie | `captures/pipeline-github-actions.png` (GitHub Actions, §7.1) | ✅ |
+| Capture du Container Registry (3 images) | `captures/registry-ghcr.png` (GHCR, §7.1) | ✅ |
 | Réponses aux 4 questions | §10 | ✅ |
 
 ## À faire par l'utilisateur
 
 1. ~~Docker~~ : fait (preuves dans `preuves/`). Arrêter avec `sudo docker compose down`.
-2. **GitLab** : créer un projet sur gitlab.com, ajouter la clé SSH, pousser
-   (`git remote add gitlab …` puis `git push -u gitlab main`), vérifier
-   *Build > Pipelines* puis *Deploy > Container Registry*, et faire les deux
-   captures.
+2. Supprimer le package vide `users` laissé par le premier essai :
+   https://github.com/users/Gashrod1/packages/container/package/nova-services-api-gateway%2Fusers
+   → *Package settings* → *Delete this package*.
