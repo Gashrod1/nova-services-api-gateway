@@ -97,8 +97,12 @@ jeton y est remplacé par `$GATEWAY_TOKEN`.
 | `GET /health` sans jeton | 200 | ✅ `{"status":"ok"}` |
 | `GET /profile/1`, Orders arrêté | 502 sans détail | ✅ 502 `A backend service is unavailable` |
 
-La même série est à rejouer contre `docker compose` sur `localhost:3000` pour le
-livrable (captures).
+**Même série rejouée sur l'architecture Docker Compose** (`localhost:3000`) :
+[`preuves/endpoints-docker.txt`](preuves/endpoints-docker.txt), résultats
+identiques. [`preuves/compose-ps.txt`](preuves/compose-ps.txt) montre les trois
+conteneurs (Users et Orders *healthy* avant le démarrage de la Gateway), le seul
+port publié `127.0.0.1:3000->8000/tcp`, et l'échec d'un accès direct à un
+microservice depuis l'hôte.
 
 ## 6. Partie 4 — Tests automatisés
 
@@ -225,19 +229,14 @@ nouvelle réponse à partir de deux services.
 | `docker-compose.yml` | racine | ✅ (validé par `docker compose config`) |
 | `.gitlab-ci.yml` | racine | ✅ (YAML valide) |
 | Tests pytest | `tests/` | ✅ 8/8, `preuves/pytest.txt` |
-| Réponses des 3 endpoints | `preuves/endpoints-local.txt` (hors Docker) ; `preuves/endpoints-docker.txt` | ✅ / ⏳ à rejouer avec Docker |
+| Réponses des 3 endpoints | `preuves/endpoints-docker.txt`, `preuves/compose-ps.txt` (et `endpoints-local.txt` hors Docker) | ✅ |
 | Capture de la pipeline GitLab réussie | — | ⏳ **utilisateur** (pousser sur GitLab) |
 | Capture du Container Registry (3 images) | — | ⏳ **utilisateur** |
 | Réponses aux 4 questions | §10 | ✅ |
 
 ## À faire par l'utilisateur
 
-1. **Docker** (avec `sudo` sur ce poste), depuis `api/` (le `.env` avec un jeton aléatoire est déjà créé) :
-   ```bash
-   sudo docker compose up --build -d && sudo docker compose ps
-   ```
-   puis `./test-endpoints.sh > preuves/endpoints-docker.txt` (rejoue les requêtes
-   du §5 sur `localhost:3000`, jeton masqué) et `sudo docker compose down`.
+1. ~~Docker~~ : fait (preuves dans `preuves/`). Arrêter avec `sudo docker compose down`.
 2. **GitLab** : créer un projet sur gitlab.com, ajouter la clé SSH, pousser
    (`git remote add gitlab …` puis `git push -u gitlab main`), vérifier
    *Build > Pipelines* puis *Deploy > Container Registry*, et faire les deux
