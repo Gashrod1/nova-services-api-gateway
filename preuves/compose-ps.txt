@@ -1,0 +1,21 @@
+$ sudo docker compose up --build -d && sudo docker compose ps
+(fin de la sortie)
+ Container eshop-gateway-1 Created 
+ Container eshop-users-1 Starting 
+ Container eshop-orders-1 Starting 
+ Container eshop-users-1 Started 
+ Container eshop-orders-1 Started 
+ Container eshop-orders-1 Waiting 
+ Container eshop-users-1 Waiting 
+ Container eshop-orders-1 Healthy 
+ Container eshop-users-1 Healthy 
+ Container eshop-gateway-1 Starting 
+ Container eshop-gateway-1 Started 
+NAME              IMAGE                 COMMAND                  SERVICE   CREATED         STATUS                                     PORTS
+eshop-gateway-1   eshop-gateway:local   "uvicorn main:app --…"   gateway   6 seconds ago   Up Less than a second (health: starting)   127.0.0.1:3000->8000/tcp
+eshop-orders-1    eshop-orders:local    "uvicorn main:app --…"   orders    6 seconds ago   Up 5 seconds (healthy)                     8000/tcp
+eshop-users-1     eshop-users:local     "uvicorn main:app --…"   users     6 seconds ago   Up 5 seconds (healthy)                     8000/tcp
+
+# Accès direct à un microservice depuis l hôte (aucun port publié)
+$ curl -m 3 http://127.0.0.1:8000/users
+curl: échec de connexion (code 000) — attendu

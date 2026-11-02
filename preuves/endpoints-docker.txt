@@ -1,0 +1,66 @@
+# Gateway : http://localhost:3000
+
+$ curl -i  http://localhost:3000/users
+HTTP/1.1 401 Unauthorized
+server: uvicorn
+www-authenticate: Bearer
+content-length: 52
+content-type: application/json
+
+{"detail":"Missing or invalid authentication token"}
+
+
+$ curl -i -H "Authorization: Bearer wrong-token" http://localhost:3000/users
+HTTP/1.1 401 Unauthorized
+server: uvicorn
+www-authenticate: Bearer
+content-length: 41
+content-type: application/json
+
+{"detail":"Invalid authentication token"}
+
+
+$ curl -i -H "Authorization: Bearer $GATEWAY_TOKEN" http://localhost:3000/users
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 95
+content-type: application/json
+
+[{"id":1,"name":"Alice","email":"alice@test.com"},{"id":2,"name":"Bob","email":"bob@test.com"}]
+
+
+$ curl -i -H "Authorization: Bearer $GATEWAY_TOKEN" http://localhost:3000/orders
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 116
+content-type: application/json
+
+[{"id":101,"userId":1,"item":"Laptop"},{"id":102,"userId":2,"item":"Phone"},{"id":103,"userId":1,"item":"Keyboard"}]
+
+
+$ curl -i -H "Authorization: Bearer $GATEWAY_TOKEN" http://localhost:3000/profile/1
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 146
+content-type: application/json
+
+{"user":{"id":1,"name":"Alice","email":"alice@test.com"},"orders":[{"id":101,"userId":1,"item":"Laptop"},{"id":103,"userId":1,"item":"Keyboard"}]}
+
+
+$ curl -i -H "Authorization: Bearer $GATEWAY_TOKEN" http://localhost:3000/profile/999
+HTTP/1.1 404 Not Found
+server: uvicorn
+content-length: 27
+content-type: application/json
+
+{"detail":"User not found"}
+
+
+$ curl -i  http://localhost:3000/health
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 15
+content-type: application/json
+
+{"status":"ok"}
+
