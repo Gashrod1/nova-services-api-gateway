@@ -1,0 +1,47 @@
+# Équivalent GitHub du .gitlab-ci.yml : test puis build & push vers GHCR.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: python:3.12-slim
+    env:
+      # Jeton fictif réservé aux tests, jamais utilisé en production.
+      GATEWAY_TOKEN: ci-test-token
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install --no-cache-dir -r gateway/requirements.txt pytest
+      - run: python -m pytest -q
+
+  build:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Droit d'écriture sur le registre limité à ce job.
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connexion à GHCR avec le jeton éphémère du workflow
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build et push des trois images (tag = SHA du commit)
+        run: |
+          registry="ghcr.io/${GITHUB_REPOSITORY,,}"
+          for service in users orders gateway; do
+            image="$registry/$service:$GITHUB_SHA"
+            docker build \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              -t "$image" "./$service"
+            docker push "$image"
+          done
