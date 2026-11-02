@@ -36,9 +36,9 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Build et push des trois images (tag = SHA du commit)
         run: |
-          registry="ghcr.io/${GITHUB_REPOSITORY,,}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
           for service in users orders gateway; do
-            image="$registry/$service:$GITHUB_SHA"
+            image="ghcr.io/$owner/eshop-$service:$GITHUB_SHA"
             docker build \
               --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
               --label "org.opencontainers.image.revision=$GITHUB_SHA" \
