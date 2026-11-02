@@ -161,6 +161,11 @@ Droits du jeton réduits au minimum : `contents: read` pour tout le workflow,
 push vers `main` (pas sur les pull requests). Les images portent le label
 `org.opencontainers.image.source`, qui les rattache au dépôt.
 
+Les actions tierces (`actions/checkout`, `docker/*`) sont **épinglées sur un SHA
+de commit complet** (version en commentaire) : le job `build` leur confie un jeton
+capable de publier des images, un tag `@v3` déplacé par un attaquant suffirait
+sinon à le détourner. Dependabot (`.github/dependabot.yml`) propose leurs mises à jour.
+
 Résultat : run **41420607047** réussi (test 11 s, trois builds en parallèle),
 capture [`captures/pipeline-github-actions.png`](captures/pipeline-github-actions.png).
 Images publiées, publiques, taguées avec le SHA `b63c591…` :

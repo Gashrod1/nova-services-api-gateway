@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # Met à jour les SHA épinglés des actions (et le commentaire de version).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
