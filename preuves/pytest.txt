@@ -1,0 +1,9 @@
+tests/test_gateway.py::test_health_is_public PASSED                      [ 12%]
+tests/test_gateway.py::test_users_requires_authentication PASSED         [ 25%]
+tests/test_gateway.py::test_users_with_invalid_token PASSED              [ 37%]
+tests/test_gateway.py::test_profile_aggregates_user_and_orders PASSED    [ 50%]
+tests/test_gateway.py::test_profile_unknown_user PASSED                  [ 62%]
+tests/test_gateway_securite.py::test_backend_unavailable_returns_502_without_details PASSED [ 75%]
+tests/test_gateway_securite.py::test_missing_gateway_token_configuration PASSED [ 87%]
+tests/test_gateway_securite.py::test_fetch_json_uses_timeout PASSED      [100%]
+============================== 8 passed in 0.21s ===============================
