@@ -1,0 +1,55 @@
+name: eshop
+
+# Paramètres de durcissement communs aux trois services
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+  users:
+    <<: *hardening
+    build: ./users
+    image: eshop-users:local
+    networks:
+      - backend
+    # Aucun port publié : joignable seulement par le réseau backend.
+
+  orders:
+    <<: *hardening
+    build: ./orders
+    image: eshop-orders:local
+    networks:
+      - backend
+
+  gateway:
+    <<: *hardening
+    build: ./gateway
+    image: eshop-gateway:local
+    environment:
+      USERS_SERVICE: http://users:8000
+      ORDERS_SERVICE: http://orders:8000
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN:?définir GATEWAY_TOKEN dans .env}
+    ports:
+      # Seul point d'entrée, lié à la boucle locale.
+      - "127.0.0.1:3000:8000"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      users:
+        condition: service_healthy
+      orders:
+        condition: service_healthy
+
+networks:
+  # Réseau interne : pas de route vers l'extérieur.
+  backend:
+    internal: true
+  # Réseau nécessaire à la publication du port de la Gateway.
+  frontend:

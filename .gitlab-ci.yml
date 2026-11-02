@@ -1,0 +1,38 @@
+stages:
+  - test
+  - build
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+test:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    # Jeton fictif réservé aux tests, jamais utilisé en production.
+    GATEWAY_TOKEN: ci-test-token
+  script:
+    - python -m pip install --no-cache-dir -r gateway/requirements.txt pytest
+    - python -m pytest -q
+
+build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  needs:
+    - test
+  before_script:
+    # Variables prédéfinies GitLab : aucun mot de passe personnel dans le YAML.
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - |
+      for service in users orders gateway; do
+        image="$CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHA"
+        docker build -t "$image" "./$service"
+        docker push "$image"
+      done
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
